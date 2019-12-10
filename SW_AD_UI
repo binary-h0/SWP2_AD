@@ -1,143 +1,176 @@
-import sys
 import cv2
-from PyQt5.QtWidgets import *
+import sys
 from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
 
-class MainWidget(QWidget):
+class ShowVideo(QObject):
 
-    def __init__(self):
-        super().__init__()
+    flag = 0
 
-        self.initUI()
+    camera = cv2.VideoCapture(0)
+
+    ret, image = camera.read()
+    height, width = image.shape[:2]
+
+    VideoSignal1 = pyqtSignal(QImage)
+    VideoSignal2 = pyqtSignal(QImage)
+
+    def __init__(self, parent=None):
+        super(ShowVideo, self).__init__(parent)
+
+    @pyqtSlot()
+    def startVideo(self):
+        global image
+
+        run_video = True
+        while run_video:
+            ret, image = self.camera.read()
+            color_swapped_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+            qt_image1 = QImage(color_swapped_image.data,
+                                    self.width,
+                                    self.height,
+                                    color_swapped_image.strides[0],
+                                    QImage.Format_RGB888)
+            self.VideoSignal1.emit(qt_image1)
+
+
+            if self.flag:
+                img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                img_canny = cv2.Canny(img_gray, 50, 100)
+
+                qt_image2 = QImage(img_canny.data,
+                                         self.width,
+                                         self.height,
+                                         img_canny.strides[0],
+                                         QImage.Format_Grayscale8)
+
+                self.VideoSignal2.emit(qt_image2)
+
+
+            loop = QEventLoop()
+            QTimer.singleShot(25, loop.quit) #25 ms
+            loop.exec_()
+
+class ImageViewer(QWidget):
+    def __init__(self, parent=None):
+        super(ImageViewer, self).__init__(parent)
+        self.image = QImage()
+        self.setAttribute(Qt.WA_OpaquePaintEvent)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.drawImage(0, 0, self.image)
+        self.image = QImage()
 
     def initUI(self):
-        # Camera Display
+        self.setWindowTitle('Test')
 
+    @pyqtSlot(QImage)
+    def setImage(self, image):
+        if image.isNull():
+            print("Viewer Dropped frame!")
 
-        # Sticker Components
-        self.stickerLabel = QLabel("STICKER")
-        self.stickerLabel.setAlignment(Qt.AlignCenter)
-
-        self.stickerButton = [x for x in range(0, 5)]
-
-        self.stickerButton[0] = QToolButton()
-        self.stickerButton[1] = QToolButton()
-        self.stickerButton[2] = QToolButton()
-        self.stickerButton[3] = QToolButton()
-        self.stickerButton[4] = QToolButton()
-        self.stickerButton[0].setText('1')
-        self.stickerButton[1].setText('2')
-        self.stickerButton[2].setText('3')
-        self.stickerButton[3].setText('4')
-        self.stickerButton[4].setText('5')
-
-        self.stickerLabel.setStyleSheet('font-size:30px')
-        self.stickerButton[0].setFixedSize(35, 35)
-        self.stickerButton[1].setFixedSize(35, 35)
-        self.stickerButton[2].setFixedSize(35, 35)
-        self.stickerButton[3].setFixedSize(35, 35)
-        self.stickerButton[4].setFixedSize(35, 35)
-
-
-        # MakeUp Components
-        self.makeUpLabel = QLabel("MAKE UP")
-        self.makeUpLabel.setAlignment(Qt.AlignCenter)
-
-        self.makeUpButton = [x for x in range(0, 5)]
-
-        self.makeUpButton[0] = QToolButton()
-        self.makeUpButton[1] = QToolButton()
-        self.makeUpButton[2] = QToolButton()
-        self.makeUpButton[3] = QToolButton()
-        self.makeUpButton[4] = QToolButton()
-        self.makeUpButton[0].setText('1')
-        self.makeUpButton[1].setText('2')
-        self.makeUpButton[2].setText('3')
-        self.makeUpButton[3].setText('4')
-        self.makeUpButton[4].setText('5')
-
-        self.makeUpLabel.setStyleSheet('font-size:30px')
-        self.makeUpButton[0].setFixedSize(35, 35)
-        self.makeUpButton[1].setFixedSize(35, 35)
-        self.makeUpButton[2].setFixedSize(35, 35)
-        self.makeUpButton[3].setFixedSize(35, 35)
-        self.makeUpButton[4].setFixedSize(35, 35)
-
-
-        # Quit Button
-        self.quitButton = QToolButton()
-        self.quitButton.setText("Quit")
-        self.quitButton.setFixedSize(70, 35)
-
-
-        # Layout Setting
-        mainLayout = QHBoxLayout()
-        #mainLayout.setSizeConstraint(QLayout.SetFixedSize)
-
-        vbox = QVBoxLayout()
-        hbox = QHBoxLayout()
-        tmp = QLabel()
-        hbox.addWidget(tmp)
-
-        stickerLayout = QHBoxLayout()
-        stickerLayout.addWidget(self.stickerButton[0])
-        stickerLayout.addWidget(self.stickerButton[1])
-        stickerLayout.addWidget(self.stickerButton[2])
-        stickerLayout.addWidget(self.stickerButton[3])
-        stickerLayout.addWidget(self.stickerButton[4])
-
-        makeUpLayout = QHBoxLayout()
-        makeUpLayout.addWidget(self.makeUpButton[0])
-        makeUpLayout.addWidget(self.makeUpButton[1])
-        makeUpLayout.addWidget(self.makeUpButton[2])
-        makeUpLayout.addWidget(self.makeUpButton[3])
-        makeUpLayout.addWidget(self.makeUpButton[4])
-
-        filterLayout = QVBoxLayout()
-        filterLayout.addWidget(self.stickerLabel)
-        filterLayout.addLayout(stickerLayout)
-        filterLayout.addWidget(self.makeUpLabel)
-        filterLayout.addLayout(makeUpLayout)
-
-        vbox.addLayout(filterLayout)
-        vbox.addLayout(hbox)
-
-        vbox.addWidget(self.quitButton, alignment=Qt.AlignRight)
-
-        mainLayout.addLayout(vbox)
-
-        self.setLayout(mainLayout)
-        self.setWindowTitle("CAMERA")
-
-        # Button Clicked
-        self.stickerButton[0].clicked.connect(self.stickerButtonClicked)
-        self.stickerButton[1].clicked.connect(self.stickerButtonClicked)
-        self.stickerButton[2].clicked.connect(self.stickerButtonClicked)
-        self.stickerButton[3].clicked.connect(self.stickerButtonClicked)
-        self.stickerButton[4].clicked.connect(self.stickerButtonClicked)
-
-        self.makeUpButton[0].clicked.connect(self.makeUpButtonClicked)
-        self.makeUpButton[1].clicked.connect(self.makeUpButtonClicked)
-        self.makeUpButton[2].clicked.connect(self.makeUpButtonClicked)
-        self.makeUpButton[3].clicked.connect(self.makeUpButtonClicked)
-        self.makeUpButton[4].clicked.connect(self.makeUpButtonClicked)
-
+        self.image = image
+        if image.size() != self.size():
+            self.setFixedSize(image.size())
+        self.update()
 
     def stickerButtonClicked(self):
         sender = self.sender()
         print(int(sender.text())-1)
         return int(sender.text())-1
 
-        #print (int(button.text())-1)
-        #return int(button.text())-1
+    def makeUpButtonClicked(self):
+        sender = self.sender()
+        print(int(sender.text()) - 1)
+        return int(sender.text()) - 1
 
-    def makeUpButtonClicked(self, button):
-        print (int(button.text())-1)
-        return int(button.text())-1
 
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    camera = MainWidget()
-    camera.show()
+
+    thread = QThread()
+    thread.start()
+    vid = ShowVideo()
+    vid.moveToThread(thread)
+
+    image_viewer1 = ImageViewer()
+
+    vid.VideoSignal1.connect(image_viewer1.setImage)
+
+    stickerLabel = QLabel("STICKER")
+    stickerLabel.setAlignment(Qt.AlignCenter)
+
+    stickerButton = [x for x in range(0, 5)]
+
+    for i in range(5):
+        stickerButton[i] = QPushButton()
+        stickerButton[i].setText("{}".format(i + 1))
+        stickerButton[i].setFixedSize(35, 35)
+
+    stickerLabel.setStyleSheet('font-size:30px')
+
+    # MakeUp Components
+    makeUpLabel = QLabel("MAKE UP")
+    makeUpLabel.setAlignment(Qt.AlignCenter)
+
+    makeUpButton = [x for x in range(0, 5)]
+
+    for i in range(5):
+        makeUpButton[i] = QPushButton()
+        makeUpButton[i].setText("{}".format(i + 1))
+        makeUpButton[i].setFixedSize(35, 35)
+
+    makeUpLabel.setStyleSheet('font-size:30px')
+
+    # Quit Button
+    quitButton = QToolButton()
+    quitButton.setText("Quit")
+    quitButton.setFixedSize(70, 35)
+
+    # Button Clicked
+    for i in range(5):
+        stickerButton[i].clicked.connect(image_viewer1.stickerButtonClicked)
+        makeUpButton[i].clicked.connect(image_viewer1.makeUpButtonClicked)
+
+    # Layout Setting
+    mainLayout = QHBoxLayout()
+
+    vbox = QVBoxLayout()
+    hbox = QHBoxLayout()
+    tmp = QLabel()
+    hbox.addWidget(tmp)
+
+    stickerLayout = QHBoxLayout()
+    for i in range(5):
+        stickerLayout.addWidget(stickerButton[i])
+
+    makeUpLayout = QHBoxLayout()
+    for i in range(5):
+        makeUpLayout.addWidget(makeUpButton[i])
+
+    filterLayout = QVBoxLayout()
+    filterLayout.addWidget(stickerLabel)
+    filterLayout.addLayout(stickerLayout)
+    filterLayout.addWidget(makeUpLabel)
+    filterLayout.addLayout(makeUpLayout)
+
+    vbox.addLayout(filterLayout)
+    vbox.addLayout(hbox)
+
+    vbox.addWidget(quitButton, alignment=Qt.AlignRight)
+
+    mainLayout.addWidget(image_viewer1)
+    mainLayout.addLayout(vbox)
+
+    layout_widget = QWidget()
+    layout_widget.setLayout(mainLayout)
+
+    main_window = QMainWindow()
+    main_window.setCentralWidget(layout_widget)
+    main_window.show()
+    vid.startVideo()
     sys.exit(app.exec_())
