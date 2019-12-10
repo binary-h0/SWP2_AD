@@ -1,0 +1,143 @@
+import sys
+import cv2
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
+
+class MainWidget(QWidget):
+
+    def __init__(self):
+        super().__init__()
+
+        self.initUI()
+
+    def initUI(self):
+        # Camera Display
+
+
+        # Sticker Components
+        self.stickerLabel = QLabel("STICKER")
+        self.stickerLabel.setAlignment(Qt.AlignCenter)
+
+        self.stickerButton = [x for x in range(0, 5)]
+
+        self.stickerButton[0] = QToolButton()
+        self.stickerButton[1] = QToolButton()
+        self.stickerButton[2] = QToolButton()
+        self.stickerButton[3] = QToolButton()
+        self.stickerButton[4] = QToolButton()
+        self.stickerButton[0].setText('1')
+        self.stickerButton[1].setText('2')
+        self.stickerButton[2].setText('3')
+        self.stickerButton[3].setText('4')
+        self.stickerButton[4].setText('5')
+
+        self.stickerLabel.setStyleSheet('font-size:30px')
+        self.stickerButton[0].setFixedSize(35, 35)
+        self.stickerButton[1].setFixedSize(35, 35)
+        self.stickerButton[2].setFixedSize(35, 35)
+        self.stickerButton[3].setFixedSize(35, 35)
+        self.stickerButton[4].setFixedSize(35, 35)
+
+
+        # MakeUp Components
+        self.makeUpLabel = QLabel("MAKE UP")
+        self.makeUpLabel.setAlignment(Qt.AlignCenter)
+
+        self.makeUpButton = [x for x in range(0, 5)]
+
+        self.makeUpButton[0] = QToolButton()
+        self.makeUpButton[1] = QToolButton()
+        self.makeUpButton[2] = QToolButton()
+        self.makeUpButton[3] = QToolButton()
+        self.makeUpButton[4] = QToolButton()
+        self.makeUpButton[0].setText('1')
+        self.makeUpButton[1].setText('2')
+        self.makeUpButton[2].setText('3')
+        self.makeUpButton[3].setText('4')
+        self.makeUpButton[4].setText('5')
+
+        self.makeUpLabel.setStyleSheet('font-size:30px')
+        self.makeUpButton[0].setFixedSize(35, 35)
+        self.makeUpButton[1].setFixedSize(35, 35)
+        self.makeUpButton[2].setFixedSize(35, 35)
+        self.makeUpButton[3].setFixedSize(35, 35)
+        self.makeUpButton[4].setFixedSize(35, 35)
+
+
+        # Quit Button
+        self.quitButton = QToolButton()
+        self.quitButton.setText("Quit")
+        self.quitButton.setFixedSize(70, 35)
+
+
+        # Layout Setting
+        mainLayout = QHBoxLayout()
+        #mainLayout.setSizeConstraint(QLayout.SetFixedSize)
+
+        vbox = QVBoxLayout()
+        hbox = QHBoxLayout()
+        tmp = QLabel()
+        hbox.addWidget(tmp)
+
+        stickerLayout = QHBoxLayout()
+        stickerLayout.addWidget(self.stickerButton[0])
+        stickerLayout.addWidget(self.stickerButton[1])
+        stickerLayout.addWidget(self.stickerButton[2])
+        stickerLayout.addWidget(self.stickerButton[3])
+        stickerLayout.addWidget(self.stickerButton[4])
+
+        makeUpLayout = QHBoxLayout()
+        makeUpLayout.addWidget(self.makeUpButton[0])
+        makeUpLayout.addWidget(self.makeUpButton[1])
+        makeUpLayout.addWidget(self.makeUpButton[2])
+        makeUpLayout.addWidget(self.makeUpButton[3])
+        makeUpLayout.addWidget(self.makeUpButton[4])
+
+        filterLayout = QVBoxLayout()
+        filterLayout.addWidget(self.stickerLabel)
+        filterLayout.addLayout(stickerLayout)
+        filterLayout.addWidget(self.makeUpLabel)
+        filterLayout.addLayout(makeUpLayout)
+
+        vbox.addLayout(filterLayout)
+        vbox.addLayout(hbox)
+
+        vbox.addWidget(self.quitButton, alignment=Qt.AlignRight)
+
+        mainLayout.addLayout(vbox)
+
+        self.setLayout(mainLayout)
+        self.setWindowTitle("CAMERA")
+
+        # Button Clicked
+        self.stickerButton[0].clicked.connect(self.stickerButtonClicked)
+        self.stickerButton[1].clicked.connect(self.stickerButtonClicked)
+        self.stickerButton[2].clicked.connect(self.stickerButtonClicked)
+        self.stickerButton[3].clicked.connect(self.stickerButtonClicked)
+        self.stickerButton[4].clicked.connect(self.stickerButtonClicked)
+
+        self.makeUpButton[0].clicked.connect(self.makeUpButtonClicked)
+        self.makeUpButton[1].clicked.connect(self.makeUpButtonClicked)
+        self.makeUpButton[2].clicked.connect(self.makeUpButtonClicked)
+        self.makeUpButton[3].clicked.connect(self.makeUpButtonClicked)
+        self.makeUpButton[4].clicked.connect(self.makeUpButtonClicked)
+
+
+    def stickerButtonClicked(self):
+        sender = self.sender()
+        print(int(sender.text())-1)
+        return int(sender.text())-1
+
+        #print (int(button.text())-1)
+        #return int(button.text())-1
+
+    def makeUpButtonClicked(self, button):
+        print (int(button.text())-1)
+        return int(button.text())-1
+
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    camera = MainWidget()
+    camera.show()
+    sys.exit(app.exec_())
