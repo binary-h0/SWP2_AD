@@ -4,6 +4,8 @@ import sys
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
+from qtpy import QtGui
+
 
 class ShowVideo(QObject):
 
@@ -167,7 +169,10 @@ class ImageViewer(QWidget):
         print(int(sender.text()) - 1)
         return int(sender.text()) - 1
 
-
+    def capture(self):
+        sender = self.sender()
+        ret, image = ShowVideo.camera.read()
+        cv2.imwrite('test.png', image, params=[cv2.IMWRITE_PNG_COMPRESSION, 0])
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
@@ -205,10 +210,15 @@ if __name__ == '__main__':
 
     makeUpLabel.setStyleSheet('font-size:30px')
 
+    # Capture Button
+    captureButton = QPushButton()
+    captureButton.setText("Capture")
+    captureButton.setFixedSize(100, 100)
+
     # Quit Button
-    quitButton = QToolButton()
+    quitButton = QPushButton()
     quitButton.setText("Quit")
-    quitButton.setFixedSize(70, 35)
+    quitButton.setFixedSize(200, 35)
 
     # Button Clicked
     for i in range(5):
@@ -232,6 +242,7 @@ if __name__ == '__main__':
         makeUpLayout.addWidget(makeUpButton[i])
 
     filterLayout = QVBoxLayout()
+    filterLayout.addLayout(hbox)
     filterLayout.addWidget(stickerLabel)
     filterLayout.addLayout(stickerLayout)
     filterLayout.addWidget(makeUpLabel)
@@ -239,7 +250,8 @@ if __name__ == '__main__':
 
     vbox.addLayout(filterLayout)
     vbox.addLayout(hbox)
-
+    vbox.addWidget(captureButton, alignment=Qt.AlignCenter)
+    vbox.addLayout(hbox)
     vbox.addWidget(quitButton, alignment=Qt.AlignRight)
 
     mainLayout.addWidget(vid.bridge)
@@ -248,6 +260,8 @@ if __name__ == '__main__':
 
     layout_widget = QWidget()
     layout_widget.setLayout(mainLayout)
+
+    captureButton.clicked.connect(vid.bridge.capture)
 
     main_window = QMainWindow()
     main_window.setCentralWidget(layout_widget)
