@@ -5,6 +5,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from qtpy import QtGui
+import time
 
 
 class ShowVideo(QObject):
@@ -172,7 +173,8 @@ class ImageViewer(QWidget):
     def capture(self):
         sender = self.sender()
         ret, image = ShowVideo.camera.read()
-        cv2.imwrite('test.png', image, params=[cv2.IMWRITE_PNG_COMPRESSION, 0])
+        # 파일명이 중복돼서 이전 사진 파일에 덮어씌워지는 일을 막기 위해 파일명을 사진이 찍힌 시간으로 정함
+        cv2.imwrite('{}.png'.format(time.time()), image, params=[cv2.IMWRITE_PNG_COMPRESSION, 0])
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
