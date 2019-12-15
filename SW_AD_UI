@@ -1,4 +1,5 @@
-import cv2
+import cv2, dlib
+import numpy as np
 import sys
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -10,6 +11,7 @@ class ShowVideo(QObject):
 
     camera = cv2.VideoCapture(0)
 
+    #num = 0
     ret, image = camera.read()
     height, width = image.shape[:2]
 
@@ -18,36 +20,97 @@ class ShowVideo(QObject):
 
     def __init__(self, parent=None):
         super(ShowVideo, self).__init__(parent)
+        self.bridge = ImageViewer()
+
+    def overlay_transparent(self,background_img, img_to_overlay_t, x, y, overlay_size=None):
+        bg_img = background_img.copy()
+        # convert 3 channels to 4 channels
+        if bg_img.shape[2] == 3:
+          bg_img = cv2.cvtColor(bg_img, cv2.COLOR_BGR2BGRA)
+
+        if overlay_size is not None:
+          img_to_overlay_t = cv2.resize(img_to_overlay_t.copy(), overlay_size)
+
+        b, g, r, a = cv2.split(img_to_overlay_t)
+
+        mask = cv2.medianBlur(a, 5)
+
+        h, w, _ = img_to_overlay_t.shape
+        roi = bg_img[int(y-h/2):int(y+h/2), int(x-w/2):int(x+w/2)]
+
+        img1_bg = cv2.bitwise_and(roi.copy(), roi.copy(), mask=cv2.bitwise_not(mask))
+        img2_fg = cv2.bitwise_and(img_to_overlay_t, img_to_overlay_t, mask=mask)
+
+        bg_img[int(y-h/2):int(y+h/2), int(x-w/2):int(x+w/2)] = cv2.add(img1_bg, img2_fg)
+
+        # convert 4 channels to 4 channels
+        bg_img = cv2.cvtColor(bg_img, cv2.COLOR_BGRA2BGR)
+
+        return bg_img
 
     @pyqtSlot()
     def startVideo(self):
         global image
+        #global num
+        global sticker_list
 
         run_video = True
         while run_video:
             ret, image = self.camera.read()
             color_swapped_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            if self.bridge.num == -1:
+                qt_image1 = QImage(color_swapped_image.data,
+                                        self.width,
+                                        self.height,
+                                        color_swapped_image.strides[0],
+                                        QImage.Format_RGB888)
+                self.VideoSignal1.emit(qt_image1)
+            else:
+                img = cv2.resize(image, (ShowVideo.width, ShowVideo.height))
+                # ori = img.copy()
+                print(self.bridge.sticker_list[self.bridge.num])
 
-            qt_image1 = QImage(color_swapped_image.data,
-                                    self.width,
-                                    self.height,
-                                    color_swapped_image.strides[0],
-                                    QImage.Format_RGB888)
-            self.VideoSignal1.emit(qt_image1)
+                faces = self.bridge.detector(img)
 
+                if len(faces) == 1:
+                    face = faces[0]
+                else:
+                    print(len(faces))
+                    pass
 
-            if self.flag:
-                img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-                img_canny = cv2.Canny(img_gray, 50, 100)
+                dlib_shape = self.bridge.predictor(img, face)
+                shape_2d = np.array([[p.x, p.y] for p in dlib_shape.parts()])
 
-                qt_image2 = QImage(img_canny.data,
-                                         self.width,
-                                         self.height,
-                                         img_canny.strides[0],
-                                         QImage.Format_Grayscale8)
+                top_left = np.min(shape_2d, axis=0)
+                bottom_right = np.max(shape_2d, axis=0)
 
-                self.VideoSignal2.emit(qt_image2)
+                face_size = int(max(bottom_right-top_left)*self.bridge.controlSize)
 
+                center_x, center_y = np.mean(shape_2d, axis=0).astype(np.int)
+
+                result = self.overlay_transparent(img, self.bridge.overlay, center_x, center_y-self.bridge.controlHeight, overlay_size=(face_size,face_size))
+
+                img = cv2.rectangle(img, pt1=(face.left(), face.top()), pt2=(face.right(), face.bottom()),color=(255,255,255), thickness=2, lineType=cv2.LINE_AA)
+
+                for s in shape_2d:
+                    cv2.circle(img, center=tuple(s), radius=1, color=(255,255,255), thickness=2, lineType=cv2.LINE_AA)
+
+                cv2.circle(img, center=tuple(top_left), radius=1, color=(255,0,0), thickness=2, lineType=cv2.LINE_AA)
+                cv2.circle(img, center=tuple(bottom_right), radius=1, color=(255,0,0), thickness=2, lineType=cv2.LINE_AA)
+
+                cv2.circle(img, center=tuple((center_x, center_y)), radius=1, color=(0,0,255), thickness=2, lineType=cv2.LINE_AA)
+                print(center_x, center_y)
+                # cv2.imshow('re', result)
+
+                result = cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
+                qt_image1 = QImage(result.data,
+                                        result.shape[1],
+                                        result.shape[0],
+                                        result.shape[1] * 3,
+                                        QImage.Format_RGB888)
+
+                self.bridge.setImage(qt_image1)
+                self.VideoSignal2.emit(qt_image1)
 
             loop = QEventLoop()
             QTimer.singleShot(25, loop.quit) #25 ms
@@ -58,6 +121,15 @@ class ImageViewer(QWidget):
         super(ImageViewer, self).__init__(parent)
         self.image = QImage()
         self.setAttribute(Qt.WA_OpaquePaintEvent)
+        self.num = -1
+        self.sticker_list = [['samples/beard.png', 0.8, -8], ['samples/ryan_transparent.png', 1.8, 22], ['samples/glasses.png', 1.0, 22], ['samples/pig_nose.png', 0.4, 7], ['samples/hair.png', 2.0, 20]]
+        self.scaler = 0.8
+
+        self.detector = dlib.get_frontal_face_detector()
+        self.predictor = dlib.shape_predictor('shape_predictor_68_face_landmarks.dat')
+        self.controlSize = self.sticker_list[self.num][1]
+        self.controlHeight = self.sticker_list[self.num][2]
+        self.overlay = cv2.imread(self.sticker_list[self.num][0], cv2.IMREAD_UNCHANGED)
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -69,8 +141,10 @@ class ImageViewer(QWidget):
 
     @pyqtSlot(QImage)
     def setImage(self, image):
+        print(str(type(image)) + " setImage")
         if image.isNull():
             print("Viewer Dropped frame!")
+            return
 
         self.image = image
         if image.size() != self.size():
@@ -80,6 +154,12 @@ class ImageViewer(QWidget):
     def stickerButtonClicked(self):
         sender = self.sender()
         print(int(sender.text())-1)
+        self.num = int(sender.text())-1
+
+        print(self.sticker_list[self.num])
+        self.overlay = cv2.imread(self.sticker_list[self.num][0], cv2.IMREAD_UNCHANGED)
+        self.controlSize = self.sticker_list[self.num][1]
+        self.controlHeight = self.sticker_list[self.num][2]
         return int(sender.text())-1
 
     def makeUpButtonClicked(self):
@@ -97,9 +177,8 @@ if __name__ == '__main__':
     vid = ShowVideo()
     vid.moveToThread(thread)
 
-    image_viewer1 = ImageViewer()
-
-    vid.VideoSignal1.connect(image_viewer1.setImage)
+    vid.VideoSignal1.connect(vid.bridge.setImage)
+    vid.VideoSignal2.connect(vid.bridge.setImage)
 
     stickerLabel = QLabel("STICKER")
     stickerLabel.setAlignment(Qt.AlignCenter)
@@ -133,8 +212,8 @@ if __name__ == '__main__':
 
     # Button Clicked
     for i in range(5):
-        stickerButton[i].clicked.connect(image_viewer1.stickerButtonClicked)
-        makeUpButton[i].clicked.connect(image_viewer1.makeUpButtonClicked)
+        stickerButton[i].clicked.connect(vid.bridge.stickerButtonClicked)
+        makeUpButton[i].clicked.connect(vid.bridge.makeUpButtonClicked)
 
     # Layout Setting
     mainLayout = QHBoxLayout()
@@ -163,7 +242,8 @@ if __name__ == '__main__':
 
     vbox.addWidget(quitButton, alignment=Qt.AlignRight)
 
-    mainLayout.addWidget(image_viewer1)
+    mainLayout.addWidget(vid.bridge)
+
     mainLayout.addLayout(vbox)
 
     layout_widget = QWidget()
