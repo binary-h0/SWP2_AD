@@ -95,11 +95,12 @@ class HandDetect:
             # print corresponding gestures which are in their ranges
             font = cv2.FONT_HERSHEY_SIMPLEX
 
-            check_point = 0
+            check_point = -1
 
             if l == 1:
                 if areacnt < 2000:
-                    cv2.putText(image, 'Put hand in the box', (0, 50), font, 2, (0, 0, 255), 3, cv2.LINE_AA)
+                    #cv2.putText(image, 'Put hand in the box', (0, 50), font, 2, (0, 0, 255), 3, cv2.LINE_AA)
+                    check_point = -1
                 else:
                     if arearatio < 12:
                         check_point = 0
@@ -129,11 +130,11 @@ class HandDetect:
 
             elif l == 6:
                 #cv2.putText(image, 'reposition', (0, 50), font, 2, (0, 0, 255), 3, cv2.LINE_AA)
-                check_point = 6
+                check_point = -1
 
             else:
                 #cv2.putText(image, 'reposition', (10, 50), font, 2, (0, 0, 255), 3, cv2.LINE_AA)
-                check_point = 6
+                check_point = -1
 
             self.return_point = check_point
 
